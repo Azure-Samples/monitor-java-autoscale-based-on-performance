@@ -1,7 +1,7 @@
 ---
 services: Monitor
 platforms: java
-author: hovsepm
+author: yaohaizh
 ---
 
 ## Getting Started with Monitor - Autoscale Settings Based On Performance Or Schedule - in Java ##
