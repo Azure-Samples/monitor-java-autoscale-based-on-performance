@@ -4,12 +4,12 @@ languages:
 - java
 products:
 - azure
-services: Monitor
-platforms: java
-author: yaohaizh
+extensions:
+- services: Monitor
+- platforms: java
 ---
 
-## Getting Started with Monitor - Autoscale Settings Based On Performance Or Schedule - in Java ##
+# Getting Started with Monitor - Autoscale Settings Based On Performance Or Schedule - in Java #
 
 
   This sample shows how to programmatically implement scenario described <a href="https://docs.microsoft.com/en-us/azure/monitoring-and-diagnostics/monitor-tutorial-autoscale-performance-schedule">here</a>.
