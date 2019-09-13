@@ -4,9 +4,8 @@ languages:
 - java
 products:
 - azure
-extensions:
-- services: Monitor
-- platforms: java
+description: "Getting Started with Monitor - Autoscale Settings Based On Performance Or Schedule - in Java"
+urlFragment: monitor-java-autoscale-based-on-performance
 ---
 
 # Getting Started with Monitor - Autoscale Settings Based On Performance Or Schedule - in Java #
