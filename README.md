@@ -4,7 +4,7 @@ languages:
 - java
 products:
 - azure
-description: "Getting Started with Monitor - Autoscale Settings Based On Performance Or Schedule - in Java"
+description: "Configure autoscale rules for scale-in and scale out based on the number of requests a Web App receives."
 urlFragment: monitor-java-autoscale-based-on-performance
 ---
 
