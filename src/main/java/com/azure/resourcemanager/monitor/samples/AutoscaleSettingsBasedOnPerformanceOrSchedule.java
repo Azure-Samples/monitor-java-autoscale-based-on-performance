@@ -1,35 +1,31 @@
-/**
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for
- * license information.
- */
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-package com.microsoft.azure.management.monitor.samples;
+package com.azure.resourcemanager.monitor.samples;
 
-import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.appservice.PricingTier;
-import com.microsoft.azure.management.appservice.WebApp;
-import com.microsoft.azure.management.monitor.AutoscaleSetting;
-import com.microsoft.azure.management.monitor.ComparisonOperationType;
-import com.microsoft.azure.management.monitor.DayOfWeek;
-import com.microsoft.azure.management.monitor.MetricStatisticType;
-import com.microsoft.azure.management.monitor.ScaleDirection;
-import com.microsoft.azure.management.monitor.ScaleType;
-import com.microsoft.azure.management.monitor.TimeAggregationType;
-import com.microsoft.azure.management.resources.fluentcore.arm.Region;
-import com.microsoft.azure.management.resources.fluentcore.utils.SdkContext;
-import com.microsoft.azure.management.samples.Utils;
-import com.microsoft.rest.LogLevel;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import org.joda.time.Period;
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.management.AzureEnvironment;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.resourcemanager.AzureResourceManager;
+import com.azure.resourcemanager.appservice.models.PricingTier;
+import com.azure.resourcemanager.appservice.models.WebApp;
+import com.azure.resourcemanager.monitor.models.AutoscaleSetting;
+import com.azure.resourcemanager.monitor.models.ComparisonOperationType;
+import com.azure.resourcemanager.monitor.models.DayOfWeek;
+import com.azure.resourcemanager.monitor.models.MetricStatisticType;
+import com.azure.resourcemanager.monitor.models.ScaleDirection;
+import com.azure.resourcemanager.monitor.models.ScaleType;
+import com.azure.resourcemanager.monitor.models.TimeAggregationType;
+import com.azure.core.management.Region;
+import com.azure.core.management.profile.AzureProfile;
+import com.azure.resourcemanager.resources.fluentcore.utils.ResourceManagerUtils;
+import com.azure.resourcemanager.samples.Utils;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 
 /**
- * This sample shows how to programmatically implement scenario described <a href="https://docs.microsoft.com/en-us/azure/monitoring-and-diagnostics/monitor-tutorial-autoscale-performance-schedule">here</a>.
+ * This sample shows how to programmatically implement scenario described <a href="https://docs.microsoft.com/azure/monitoring-and-diagnostics/monitor-tutorial-autoscale-performance-schedule">here</a>.
  *  - Create a Web App and App Service Plan
  *  - Configure autoscale rules for scale-in and scale out based on the number of requests a Web App receives
  *  - Trigger a scale-out action and watch the number of instances increase
@@ -38,24 +34,22 @@ import java.util.concurrent.TimeUnit;
  */
 public final class AutoscaleSettingsBasedOnPerformanceOrSchedule {
 
-    private static OkHttpClient httpClient;
-
     /**
      * Main function which runs the actual sample.
-     * @param azure instance of the azure client
+     * @param azureResourceManager instance of the azure client
      * @return true if sample runs successfully
      */
-    public static boolean runSample(Azure azure) {
-        final String webappName = Utils.createRandomName("MyTestScaleWebApp");
-        final String autoscaleSettingsName = Utils.createRandomName("autoscalename1");
-        final String rgName = Utils.createRandomName("myResourceGroup");
+    public static boolean runSample(AzureResourceManager azureResourceManager) {
+        final String webappName = Utils.randomResourceName(azureResourceManager, "MyTestScaleWebApp", 20);
+        final String autoscaleSettingsName = Utils.randomResourceName(azureResourceManager, "autoscalename1", 20);
+        final String rgName = Utils.randomResourceName(azureResourceManager, "myResourceGroup", 20);
 
         try {
             // ============================================================
             // Create a Web App and App Service Plan
             System.out.println("Creating a web app and service plan");
 
-            WebApp webapp = azure.webApps().define(webappName)
+            WebApp webapp = azureResourceManager.webApps().define(webappName)
                     .withRegion(Region.US_SOUTH_CENTRAL)
                     .withNewResourceGroup(rgName)
                     .withNewWindowsPlan(PricingTier.PREMIUM_P1)
@@ -66,7 +60,7 @@ public final class AutoscaleSettingsBasedOnPerformanceOrSchedule {
 
             // ============================================================
             // Configure autoscale rules for scale-in and scale out based on the number of requests a Web App receives
-            AutoscaleSetting scaleSettings = azure.autoscaleSettings().define(autoscaleSettingsName)
+            AutoscaleSetting scaleSettings = azureResourceManager.autoscaleSettings().define(autoscaleSettingsName)
                     .withRegion(Region.US_SOUTH_CENTRAL)
                     .withExistingResourceGroup(rgName)
                     .withTargetResource(webapp.appServicePlanId())
@@ -81,17 +75,17 @@ public final class AutoscaleSettingsBasedOnPerformanceOrSchedule {
                         .defineScaleRule()
                             .withMetricSource(webapp.id())
                             .withMetricName("Requests")
-                            .withStatistic(Period.minutes(5), MetricStatisticType.SUM)
+                            .withStatistic(Duration.ofMinutes(5), MetricStatisticType.SUM)
                             .withCondition(TimeAggregationType.TOTAL, ComparisonOperationType.GREATER_THAN, 10)
-                            .withScaleAction(ScaleDirection.INCREASE, ScaleType.CHANGE_COUNT, 1, Period.minutes(5))
+                            .withScaleAction(ScaleDirection.INCREASE, ScaleType.CHANGE_COUNT, 1, Duration.ofMinutes(5))
                             .attach()
                         // Create a scale-in rule
                         .defineScaleRule()
                             .withMetricSource(webapp.id())
                             .withMetricName("Requests")
-                            .withStatistic(Period.minutes(10), MetricStatisticType.AVERAGE)
+                            .withStatistic(Duration.ofMinutes(10), MetricStatisticType.AVERAGE)
                             .withCondition(TimeAggregationType.TOTAL, ComparisonOperationType.LESS_THAN, 5)
-                            .withScaleAction(ScaleDirection.DECREASE, ScaleType.CHANGE_COUNT, 1, Period.minutes(5))
+                            .withScaleAction(ScaleDirection.DECREASE, ScaleType.CHANGE_COUNT, 1, Duration.ofMinutes(5))
                             .attach()
                         // Create profile schedule
                         .withRecurrentSchedule("Pacific Standard Time", "09:00", DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
@@ -103,12 +97,14 @@ public final class AutoscaleSettingsBasedOnPerformanceOrSchedule {
                         .attach()
                     .create();
 
-            String deployedWebAppUrl = "https://" + webapp.hostNames().iterator().next() + "/";
+            System.out.println("Auto-scale Setting: " + scaleSettings.id());
+
+            String deployedWebAppUrl = "https://" + webapp.hostnames().iterator().next() + "/";
 
             // Trigger scale-out action
             for (int i = 0; i < 11; i++) {
-                SdkContext.sleep(5000);
-                curl(deployedWebAppUrl);
+                ResourceManagerUtils.sleep(Duration.ofSeconds(5));
+                Utils.sendGetRequest(deployedWebAppUrl);
             }
 
             // Now you can browse the history of autoscale form the azure portal
@@ -121,19 +117,15 @@ public final class AutoscaleSettingsBasedOnPerformanceOrSchedule {
             // 7. Under the chart, you see the activity log entries for each scale action taken by this autoscale setting.
 
             return true;
-        } catch (Exception f) {
-            System.out.println(f.getMessage());
-            f.printStackTrace();
         } finally {
-            if (azure.resourceGroups().getByName(rgName) != null) {
+            if (azureResourceManager.resourceGroups().getByName(rgName) != null) {
                 System.out.println("Deleting Resource Group: " + rgName);
-                azure.resourceGroups().deleteByName(rgName);
+                azureResourceManager.resourceGroups().beginDeleteByName(rgName);
                 System.out.println("Deleted Resource Group: " + rgName);
             } else {
                 System.out.println("Did not create any resources in Azure. No clean up is necessary");
             }
         }
-        return false;
     }
 
     /**
@@ -143,33 +135,24 @@ public final class AutoscaleSettingsBasedOnPerformanceOrSchedule {
     public static void main(String[] args) {
         try {
 
-            final File credFile = new File(System.getenv("AZURE_AUTH_LOCATION"));
+            final AzureProfile profile = new AzureProfile(AzureEnvironment.AZURE);
+            final TokenCredential credential = new DefaultAzureCredentialBuilder()
+                .authorityHost(profile.getEnvironment().getActiveDirectoryEndpoint())
+                .build();
 
-            Azure azure = Azure.configure()
-                    .withLogLevel(LogLevel.NONE)
-                    .authenticate(credFile)
-                    .withDefaultSubscription();
+            AzureResourceManager azureResourceManager = AzureResourceManager
+                .configure()
+                .withLogLevel(HttpLogDetailLevel.BASIC)
+                .authenticate(credential, profile)
+                .withDefaultSubscription();
 
             // Print selected subscription
-            System.out.println("Selected subscription: " + azure.subscriptionId());
+            System.out.println("Selected subscription: " + azureResourceManager.subscriptionId());
 
-            runSample(azure);
+            runSample(azureResourceManager);
         } catch (Exception e) {
             System.out.println(e.getMessage());
             e.printStackTrace();
-        }
-    }
-
-    static {
-        httpClient = new OkHttpClient.Builder().readTimeout(1, TimeUnit.MINUTES).build();
-    }
-
-    private static void curl(String url) {
-        Request request = new Request.Builder().url(url).get().build();
-        try {
-            System.out.println("Browse URL >> '" + url + "'");
-            System.out.println("Server Response << '" + httpClient.newCall(request).execute().body().string() + "'");
-        } catch (IOException e) {
         }
     }
 }
